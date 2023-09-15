@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 # SQLite database configuration
 DATABASE_URL = "sqlite:///./test.db"  # Use a local SQLite database file
@@ -21,9 +22,26 @@ class TodoItemDB(Base):
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# Connecting Fast API with React
+origins = [
+    "http://localhost:3000",
+    "localhost:3000"
+]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 # Pydantic model for your to-do item
 
 class TodoItem(BaseModel):
+    id: int
     title: str
     description: str
     done: bool = False
@@ -44,7 +62,7 @@ def create_todo(todo: TodoItem, db = Depends(get_db)):
     db.commit()
     db.refresh(db_todo)
     return db_todo
-
+# http://localhost:8000/todos/
 @app.get("/todos/{todo_id}", response_model=TodoItem)
 def read_todo(todo_id: int, db = Depends(get_db)):
     db_todo = db.query(TodoItemDB).filter(TodoItemDB.id == todo_id).first()
@@ -54,7 +72,7 @@ def read_todo(todo_id: int, db = Depends(get_db)):
 
 @app.get("/todos/", response_model=list[TodoItem])
 def read_todos(skip: int = 0, limit: int = 10, db = Depends(get_db)):
-    todos = db.query(TodoItemDB).offset(skip).limit(limit).all()
+    todos = db.query(TodoItemDB).offset(skip).limit(limit).all() 
     return todos
 
 @app.put("/todos/{todo_id}", response_model=TodoItem)
@@ -76,3 +94,5 @@ def delete_todo(todo_id: int, db = Depends(get_db)):
     db.delete(db_todo)
     db.commit()
     return db_todo
+
+
